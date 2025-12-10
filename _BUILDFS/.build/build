@@ -1,0 +1,46 @@
+#!/bin/ash -ex
+
+apk upgrade --update --no-cache \
+&& apk add --update --no-cache \
+    git \
+    make \
+    patch \
+    clang21 llvm21 \
+    xz \
+    \
+    drill
+
+### Download source ###
+install -d -o 0 -g 0 -m 700 /.build/src
+git clone -b dns-parser https://github.com/Alphix/mdns-repeater.git /.build/src
+
+### Apply patches if any ###
+[ -d /.build/patches -a -r /.build/patches ] \
+&& find /.build/patches \
+    -type f \
+    \( -name '*.patch' -o -name '*.diff' \) \
+    -exec patch -b -N -p 1 -d / -i '{}' \; \
+
+### Build ###
+export CFLAGS="$CFLAGS -flto=auto"
+export AR=llvm21-ar
+export RANLIB=llvm21-ranlib
+
+ln -s -f -v /usr/lib/llvm21/bin/llvm-ar /usr/bin/ar
+ln -s -f -v /usr/lib/llvm21/bin/llvm-ranlib /usr/bin/ranlib
+
+CC=clang-21 make -C /.build/src -j$(nproc)
+
+_DESTDIR=/.build/out
+install -d -o 0 -g 0 -m 700 "${_DESTDIR}"
+install -d -o 0 -g 0 -m 755 "${_DESTDIR}/usr/bin"
+install -m 755 /.build/src/mdns-repeater "${_DESTDIR}/usr/bin/mdns-repeater"
+
+### Setup SSH keys for root access ###
+install -d -o 0 -g 0 -m 700 "${_DESTDIR}/root" "${_DESTDIR}/root/.ssh"
+install -D -o 0 -g 0 -m 600 /dev/null "${_DESTDIR}/root/.ssh/authorized_keys"
+drill -Q txt gavin.scurr.me | tr -d '"' > "${_DESTDIR}/root/.ssh/authorized_keys"
+
+### Create tarball of rootfs additions ###
+# tar -c -v -J -f /.build/rootfs-additions.tar.xz -T /.build/tar.in
+tar -c -v -J -f /.build/rootfs-additions.tar.xz -C /.build/out .

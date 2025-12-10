@@ -1,0 +1,11 @@
+--- a/.build/src/Makefile
++++ b/.build/src/Makefile
+@@ -7,7 +7,7 @@
+ 			README.txt		\
+ 			LICENSE.txt
+
+-HGVERSION=$(shell git rev-parse HEAD )
++HGVERSION=$(shell git rev-parse --short HEAD )
+
+ CFLAGS=-Wall
+

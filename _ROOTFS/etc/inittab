@@ -7,12 +7,16 @@
 
 #::sysinit:/sbin/openrc sysinit
 #::sysinit:/sbin/openrc boot
-::sysinit:/bin/ln -vs /etc/init.d/mdns-repeater /etc/runlevels/default/mdns-repeater
-::sysinit:/bin/ln -vs /etc/init.d/interfaces /etc/runlevels/default/interfaces
-::sysinit:/bin/chmod -vf 755 /etc/init.d/mdns-repeater /etc/init.d/interfaces
-::sysinit:/bin/rm -f /etc/init.d/hwdrivers /etc/init.d/machine-id
-::wait:/sbin/openrc default
+# ::sysinit:/bin/ln -vs /etc/init.d/mdns-repeater /etc/runlevels/default/mdns-repeater
+# ::sysinit:/bin/ln -vs /etc/init.d/interfaces /etc/runlevels/default/interfaces
+# ::sysinit:/bin/chmod -vf 755 /etc/init.d/mdns-repeater /etc/init.d/interfaces
+# ::sysinit:/bin/rm -f /etc/init.d/hwdrivers /etc/init.d/machine-id
+::sysinit:/sbin/sysctl -p
+::sysinit:/usr/sbin/dropbear -R -E -s
+::sysinit:/sbin/ip -j link show up  | /usr/bin/jq -r -j '.[] | select(.link_type == "ether") | .ifname + " "' > /.ifaces
+::wait:/bin/ash -c "eval exec /usr/bin/mdns-repeater -f -4 $(cat /.ifaces)"
+# ::wait:/sbin/openrc default
 
 # ::once:/bin/sh
 
-::shutdown:/sbin/openrc shutdown
+# ::shutdown:/sbin/openrc shutdown

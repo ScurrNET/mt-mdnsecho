@@ -8,22 +8,41 @@
 ARG ALPINE_VER=3
 
 FROM alpine:${ALPINE_VER} as builder
-RUN set -xe; \
-    apk add --update --no-cache \
-        alpine-sdk; \
-    git clone https://github.com/geekman/mdns-repeater.git /mdnsecho; \
-    cd /mdnsecho; \
-    make
+COPY --chown=0:0 --chmod=444 [ "${PWD}/_BUILDFS/", "/" ]
+RUN [ "/bin/ash", "--", "/.build/build" ]
 
-ARG ALPINE_VER
+
+# FROM alpine:${ALPINE_VER} as builder
+# RUN set -xe; \
+#     apk add --update --no-cache \
+#         git \
+#         make \
+#         alpine-sdk; \
+#     git clone https://github.com/geekman/mdns-repeater.git /mdnsecho; \
+#     cd /mdnsecho; \
+#     make
+
+# ARG ALPINE_VER
+# FROM alpine:${ALPINE_VER}
+# RUN apk add --update --no-cache \
+#         openrc \
+#         vlan; \
+#     echo 'source /etc/network/interfaces.d/*' >> /etc/network/interfaces; \
+#     mkdir /etc/network/interfaces.d/; \
+#     mv /etc/inittab /etc/inittab.000
+# COPY --from=builder --chown=0:0 --chmod=555 [ "/mdnsecho/mdns-repeater", "/mdns-repeater" ]
+# COPY [ "${PWD}/_ROOTFS/", "/" ]
+
+# ENTRYPOINT ["/sbin/init"]
+
 FROM alpine:${ALPINE_VER}
-RUN apk add --update --no-cache \
-        openrc \
-        vlan; \
-    echo 'source /etc/network/interfaces.d/*' >> /etc/network/interfaces; \
-    mkdir /etc/network/interfaces.d/; \
-    mv /etc/inittab /etc/inittab.000
-COPY --from=builder --chown=0:0 --chmod=555 [ "/mdnsecho/mdns-repeater", "/mdns-repeater" ]
-COPY [ "${PWD}/_ROOTFS/", "/" ]
+# VOLUME [ "/.config" ]
+COPY --chown=0:0 --chmod=644 [ "${PWD}/_ROOTFS/", "/" ]
+COPY --from=builder --chown=0:0 --chmod=440 [ "/.build/rootfs-additions.tar.xz", "/.build/" ]
+RUN [ "/bin/ash", "--", "/.build/build" ]
+
+LABEL org.opencontainers.image.source="https://github.com/scurrnet/mt-unbound"
+LABEL org.opencontainers.image.description="Unbound DNS OCI container for use on MikroTik RouterOS"
 
 ENTRYPOINT ["/sbin/init"]
+STOPSIGNAL SIGUSR2

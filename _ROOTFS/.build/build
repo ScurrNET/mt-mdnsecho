@@ -1,0 +1,49 @@
+#!/bin/ash -ex
+
+addgroup -g 9999 service
+adduser -D -H -u 9999 -G service -s /sbin/nologin service
+
+chmod -c +x \
+    /etc/local.d/*.start \
+    /etc/local.d/*.stop \
+    /etc/init.d/* \
+    2> /dev/null
+
+apk upgrade --update --no-cache \
+&& apk add --update --no-cache \
+    dropbear tmux \
+    iproute2-minimal \
+    jq
+
+    # openrc \
+    # iproute2 \
+    # dropbear dropbear-openrc \
+    # patch \
+    # tmux \
+    # \
+    # dnssec-root \
+    # libevent \
+    # libexpat \
+    # unbound-openrc \
+    # busybox-openrc \
+    # logrotate \
+    # socat \
+    # python3
+
+# rc-update add local default
+# rc-update add dropbear default
+# rc-update add unbound-init default
+# rc-update add unbound default
+# rc-update add crond default
+
+
+### Apply patches if any ###
+[ -d /.build/patches -a -r /.build/patches ] \
+&& find /.build/patches \
+    -type f \
+    \( -name '*.patch' -o -name '*.diff' \) \
+    -exec patch -b -N -p 1 -d / -i '{}' \; \
+
+tar -x -v -J -f /.build/rootfs-additions.tar.xz -C /
+
+exec /bin/rm -f -R /.build

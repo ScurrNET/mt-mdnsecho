@@ -1,0 +1,40 @@
+#!/bin/bash -ex
+_VER=2.0
+
+
+docker images --filter "dangling=true" --format '{{.ID}}' | xargs -r docker rmi -f || true
+docker buildx build \
+  --no-cache \
+  --pull \
+  --tag ghcr.io/scurrnet/mt-mdnsecho:${_VER} \
+  --tag ghcr.io/scurrnet/mt-mdnsecho:latest \
+  --progress plain \
+  --file ${PWD}/Dockerfile \
+  --metadata-file build-metadata.json \
+  ${PWD} \
+# && docker push -a 'ghcr.io/scurrnet/mt-mdnsecho' \
+# || exit 1
+
+docker container inspect mt-mdnsecho &> /dev/null && docker container rm -f mt-mdnsecho || true
+docker network inspect mt-mdnsecho &> /dev/null && docker network rm -f mt-mdnsecho || true
+
+docker network create -d macvlan \
+	--subnet=10.1.1.0/24 \
+	--gateway=10.1.1.1  \
+	-o parent=end0 \
+	mt-mdnsecho
+
+
+	# --entrypoint /sbin/init \
+docker run \
+	--rm \
+	--tty \
+	--interactive \
+	--name mt-mdnsecho \
+	--network mt-mdnsecho \
+	--ip 10.1.1.90 \
+	--env DEBUG=1 \
+	--env UNBOUND_CONFFILE=/.config/unbound.conf \
+	--stop-signal SIGUSR2 \
+	ghcr.io/scurrnet/mt-mdnsecho:${_VER} \
+	# /bin/ash
